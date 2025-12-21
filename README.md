@@ -1,6 +1,7 @@
 # Rust library for Python example
 
-This project illustrates how Rust can be used to write libraries that are then exposed to a Python runtime and imported.
+This *minimal* project illustrates how Rust can be used to write libraries that are then exposed to a Python runtime and imported.
+
 
 ## Build
 
