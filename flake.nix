@@ -2,7 +2,7 @@
   description = "MIMIC-IV Rust Bindings";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
-    nix-shells.url = "path:/home/antonio/Documents/nix-shells";
+    nix-shells.url = "github:Alfablos/nix-shells";
     nix-shells.inputs.nixpkgs.follows = "nixpkgs";
   };
 

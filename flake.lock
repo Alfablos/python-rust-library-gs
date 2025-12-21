@@ -555,14 +555,17 @@
         "oxalica-rust": "oxalica-rust"
       },
       "locked": {
-        "lastModified": 1764457115,
-        "narHash": "sha256-obX20fm1vm+9J58Jp5nMTiQ6PwnxMMV9W75GFO/UbbE=",
-        "path": "/home/antonio/Documents/nix-shells",
-        "type": "path"
+        "lastModified": 1764457098,
+        "narHash": "sha256-omRs1LFsRkVwrOoFzub8otJu9edpwlr5svEaTUrXoDY=",
+        "owner": "Alfablos",
+        "repo": "nix-shells",
+        "rev": "0882471b9b866b6b9ff731f26d0e196d0d991bf7",
+        "type": "github"
       },
       "original": {
-        "path": "/home/antonio/Documents/nix-shells",
-        "type": "path"
+        "owner": "Alfablos",
+        "repo": "nix-shells",
+        "type": "github"
       }
     },
     "nix-test-runner": {
