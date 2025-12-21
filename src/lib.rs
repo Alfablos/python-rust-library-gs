@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use pyo3::{
   Bound,
   PyResult,
@@ -7,24 +8,26 @@ use pyo3::{
   types::{PyModule, PyModuleMethods},
 };
 
+mod source;
+use source::Source;
+
+
 #[pyclass]
 struct FederatedStreamer {
-  message: String,
+  sources: Vec<Arc<dyn Source>>,
+  batch_size: usize
 }
 
 #[pymethods]
 impl FederatedStreamer {
   #[new]
-  pub fn new() -> Self {
+  pub fn new(batch_size: usize) -> Self {
     Self {
-      message: "Hey you!".into(),
+      sources: Vec::new(),
+      batch_size
     }
   }
 
-  #[getter]
-  pub fn message(&self) -> String {
-    self.message.clone()
-  }
 }
 
 /// A Python module implemented in Rust.
