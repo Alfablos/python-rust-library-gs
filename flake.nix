@@ -41,7 +41,7 @@
         };
       });
       packages = forAllSystems (pkgs: {
-        default = self.packages.${pkgs.stdenv.hostPlatform.system}.main;
+        default = self.packages.${pkgs.stdenv.hostPlatform.system}.python-rust-lib-gs;
         main = pkgs.stdenv.mkDerivation {
           name = "use-python-rust-lib-gs";
           propagatedBuildInputs = [
