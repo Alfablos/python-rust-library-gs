@@ -10,27 +10,26 @@ use pyo3::{
 
 mod source;
 use source::Source;
-
+use crate::source::DataSource;
 
 #[pyclass]
 struct FederatedStreamer {
-  sources: Vec<Arc<dyn Source>>,
+  sources: Vec<DataSource>,
   batch_size: usize
 }
 
 #[pymethods]
 impl FederatedStreamer {
   #[new]
-  pub fn new(batch_size: usize) -> Self {
-    Self {
-      sources: Vec::new(),
+  pub fn new(batch_size: usize, sources: Vec<DataSource>) -> PyResult<Self> {
+    Ok(Self {
+      sources,
       batch_size
-    }
+    })
   }
 
 }
 
-/// A Python module implemented in Rust.
 #[pymodule]
 fn python_rust_lib_gs(m: &Bound<'_, PyModule>) -> PyResult<()> {
   m.add_class::<FederatedStreamer>()?;
