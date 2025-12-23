@@ -1,14 +1,17 @@
 #!/usr/bin/env/python3
 
 import python_rust_lib_gs as rpl
+from python_rust_lib_gs import FederatedStreamer, CSVSource
 
 print(dir(rpl))
 
-streamer = rpl.FederatedStreamer(
+
+
+streamer = FederatedStreamer(
     64,
     [
-        ('./mimic-patients.csv', rpl.DataSource((), DataSource.MimicCSVSource))
+        CSVSource('./mimic-patients.csv', ['gender', 'anchor_age', 'dod'])
     ]
 )
 
-print(streamer.message)
+print(streamer)
