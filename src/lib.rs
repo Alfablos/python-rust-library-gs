@@ -1,13 +1,23 @@
 use futures::stream::{BoxStream, StreamExt};
 use pyo3::exceptions::PyOSError;
 use pyo3::types::PyAny;
-use pyo3::{Bound, PyResult, Python, pyclass, pymethods, pymodule, types::{PyModule, PyModuleMethods}, PyErr};
+use pyo3::{Bound, PyResult, Python, pyclass, pymethods, pymodule, types::{PyModule, PyModuleMethods}, PyErr, pyfunction, CastIntoError, Py};
 use std::sync::{Arc, OnceLock};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 
 mod source;
 use crate::source::{Source, CSVSource, DataSource};
+
+
+#[pymodule]
+fn python_rust_lib_gs(m: &Bound<'_, PyModule>) -> PyResult<()> {
+  m.add_class::<FederatedStreamer>()?;
+  m.add_class::<CSVSource>()?;
+
+  Ok(())
+}
+
 
 #[pyclass]
 struct FederatedStreamer {
@@ -17,6 +27,9 @@ struct FederatedStreamer {
 
 #[pymethods]
 impl FederatedStreamer {
+  pub fn salut(&self) -> String {
+    format!("salut with {} as batch size", self.batch_size)
+  }
   #[new]
   #[pyo3(signature = (batch_size, sources, buffer_size=100))]
   pub fn new(batch_size: usize, sources: Vec<DataSource>, buffer_size: usize) -> PyResult<Self> {
@@ -44,7 +57,11 @@ impl FederatedStreamer {
     })
   }
 
-  pub fn next<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+  pub fn __aiter__<'py>(slf: Py<Self>) -> Py<Self> {
+    slf
+  }
+  
+  pub fn __anext__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
     let receiver = self.receiver.clone();
     pyo3_async_runtimes::tokio::future_into_py(py, async move {
       let mut rx = receiver.lock().await;
@@ -67,14 +84,6 @@ fn handle_batch<'a>(source: DataSource, batch_size: usize) -> BoxStream<'a, anyh
       Err(e) => Some((Err(e), source)),
     }
   }).boxed()  // Not a big deal performance-wise since we're running IO-bound tasks
-}
-
-#[pymodule]
-fn python_rust_lib_gs(m: &Bound<'_, PyModule>) -> PyResult<()> {
-  m.add_class::<FederatedStreamer>()?;
-  m.add_class::<CSVSource>()?;
-
-  Ok(())
 }
 
 fn get_runtime() -> &'static Runtime {
