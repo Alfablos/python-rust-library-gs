@@ -1,10 +1,12 @@
+use std::error::Error;
 use futures::stream::{BoxStream, StreamExt};
-use pyo3::exceptions::PyOSError;
 use pyo3::types::PyAny;
 use pyo3::{Bound, PyResult, Python, pyclass, pymethods, pymodule, types::{PyModule, PyModuleMethods}, PyErr, pyfunction, CastIntoError, Py};
 use std::sync::{Arc, OnceLock};
+use anyhow::__private::kind::TraitKind;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::error::TrySendError;
 
 mod source;
 use crate::source::{Source, CSVSource, DataSource};
@@ -45,9 +47,34 @@ impl FederatedStreamer {
 
       // Push to channel
       while let Some(result) = united_stream.next().await {
-        let lines = result.expect("Error while streaming lines.");
+        let lines = match result {
+          Ok(lines) => lines,
+          Err(e) => {
+            eprintln!("Unable to fetch more data: {e}");
+            std::process::exit(1);
+          }
+        };
 
-        tx.send(lines).await.expect("Error while sending lines through the channel.");
+        // The try_send approach won't work since, at first, the producer will overflow the channel. Let's go for a more natural backpressure
+        if tx.send(lines).await.is_err() { // Can only fail due to a send op through a closed channel
+          eprintln!("Data is being sent through a full buffered channel. This is a bug!");
+          std::process::exit(1);
+        }
+        
+        // // if tx.try_send(lines).is_err() {  // That means the channel is closed because FederatedStreamer has been
+        // //   // destroyed by python's garbage collector
+        // //   // Alternative: cancellationtoken, but the current impl is non-blocking
+        // //   break;
+        // // }
+        // match tx.try_send(lines) {
+        //   Ok(_) => {}
+        //   Err(TrySendError::Full(_)) => panic!("Data is being sent through a full buffered channel. This is a bug!"),
+        //   Err(TrySendError::Closed(_)) => {
+        //     /*
+        //       That's ok, Python garbage-collected the FederatedStreamer instance. R.I.P.
+        //     */
+        //   }
+        // }
       }
     });
 
@@ -60,7 +87,7 @@ impl FederatedStreamer {
   pub fn __aiter__<'py>(slf: Py<Self>) -> Py<Self> {
     slf
   }
-  
+
   pub fn __anext__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
     let receiver = self.receiver.clone();
     pyo3_async_runtimes::tokio::future_into_py(py, async move {
