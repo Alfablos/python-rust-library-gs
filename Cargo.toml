@@ -13,13 +13,14 @@ crate-type = ["cdylib"]
 #path = "src/bin/test.rs"
 
 [dependencies]
-pyo3 = { version = "0.27", default-features = false, features = [
+# Pyarrow requires pyo3 0.26
+pyo3 = { version = "0.26", default-features = false, features = [
     "extension-module",
     "macros",
     "abi3",
     "experimental-async",
 ] }
-pyo3-async-runtimes = { version = "0.27", default-features = false, features = [
+pyo3-async-runtimes = { version = "0.26", default-features = false, features = [
     "tokio-runtime",
 ] }
 async-trait = { version = "0.1", default-features = false, features = [] }
@@ -27,14 +28,15 @@ anyhow = { version = "1", default-features = false, features = ["std"] }
 tokio = { version = "1.48", default-features = false, features = [
     "macros",
     "fs",
-    "rt-multi-thread",
+    "rt-multi-thread"
 ] }
 futures = { version = "0.3", default-features = false, features = [ "alloc" ] }
 
 # TODO: figure out what's needed
-polars = { version = "0.46", default-features = true, features = [
-    "async",
+polars = { version = "0.52", default-features = true, features = [
     "lazy",
     "timezones", # Needed due to a bug in 0.52 (https://github.com/pola-rs/polars/issues/25231)
+    
 ] }
-arrow = { version = "57", default-features = false, features = [] }
+arrow = { version = "57", default-features = false, features = ["pyarrow", "ffi"] }
+polars-arrow = { version = "0.52", default-features = false, features = ["arrow-format"] }

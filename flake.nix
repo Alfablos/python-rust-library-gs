@@ -31,7 +31,7 @@
               }
             )
           );
-      pythonForPkgs = pkgs: pkgs.python3.withPackages (pyPkgs: with pyPkgs; [ ]);
+      pythonForPkgs = pkgs: pkgs.python3.withPackages (pyPkgs: with pyPkgs; [ pyarrow ]);
     in
     {
       apps = forAllSystems (pkgs: {

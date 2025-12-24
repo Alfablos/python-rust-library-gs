@@ -1,13 +1,12 @@
 use std::error::Error;
 use futures::stream::{BoxStream, StreamExt};
 use pyo3::types::PyAny;
-use pyo3::{Bound, PyResult, Python, pyclass, pymethods, pymodule, types::{PyModule, PyModuleMethods}, PyErr, pyfunction, CastIntoError, Py};
+use pyo3::{Bound, PyResult, Python, pyclass, pymethods, pymodule, types::{PyModule, PyModuleMethods}, Py};
 use std::sync::{Arc, OnceLock};
 use anyhow::__private::kind::TraitKind;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 // use tokio::sync::mpsc::error::TrySendError;
-use arrow::array::RecordBatch as ArrowRecordBatch;
 
 mod source;
 use crate::source::{Source, csv::CSVSource, DataSource};
@@ -24,7 +23,7 @@ fn python_rust_lib_gs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 #[pyclass]
 struct FederatedStreamer {
-  receiver: Arc<tokio::sync::Mutex<mpsc::Receiver<ArrowRecordBatch>>>,
+  receiver: Arc<tokio::sync::Mutex<mpsc::Receiver<Py<PyAny>>>>,
   batch_size: Option<usize>,
 }
 
@@ -98,7 +97,7 @@ impl FederatedStreamer {
   }
 }
 
-fn handle_batch<'a>(source: DataSource, batch_size: Option<usize>) -> BoxStream<'a, anyhow::Result<ArrowRecordBatch>> {
+fn handle_batch<'a>(source: DataSource, batch_size: Option<usize>) -> BoxStream<'a, PyResult<Py<PyAny>>> {
   // https://docs.rs/futures/latest/futures/stream/fn.unfold.html
   // Unfold accepts a T and a FnMut(T) -> Future and returns a Future with an output of Option<Item, T>
   futures::stream::unfold(source, move |source| async move {

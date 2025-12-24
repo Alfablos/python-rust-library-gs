@@ -3,7 +3,7 @@ use async_trait::async_trait;
 
 use polars::prelude::{Expr, LazyCsvReader, LazyFileListReader, LazyFrame, col, SchemaRef, Schema};
 use pyo3::exceptions::{PyFileNotFoundError, PyOSError, PyTypeError};
-use pyo3::{Borrowed, FromPyObject, PyAny, PyErr, PyResult, pyclass, pymethods};
+use pyo3::{Borrowed, FromPyObject, PyAny, PyErr, PyResult, pyclass, pymethods, PyObject, Py};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 
@@ -14,7 +14,7 @@ use csv::CSVSource;
 #[async_trait]
 pub trait Source: Send + Sync {
   fn name(&self) -> &'static str;
-  async fn fetch(&self, batch_size: Option<usize>) -> Result<Option<ArrowRecordBatch>>;
+  async fn fetch(&self, batch_size: Option<usize>) -> PyResult<Option<Py<PyAny>>>;
 }
 
 // Clone must be implemented for FederatedStreamer::new to accept a Vec<DataSource>: https://docs.rs/pyo3/latest/pyo3/conversion/trait.FromPyObject.html#implementors
@@ -32,12 +32,12 @@ impl Source for DataSource {
     }
   }
 
-  async fn fetch(&self, batch_size: Option<usize>) -> Result<Option<ArrowRecordBatch>> {
+  async fn fetch(&self, batch_size: Option<usize>) -> PyResult<Option<Py<PyAny>>> {
     match &self {
       DataSource::CSV(c) => {
-        todo!()
+        c.read_next().await
       }
-      _ => Err(anyhow::Error::msg("Unsupported data source"))
+      _ => Err(PyOSError::new_err("Unsupported data source"))
     }
   }
 }
