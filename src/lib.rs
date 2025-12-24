@@ -6,10 +6,11 @@ use std::sync::{Arc, OnceLock};
 use anyhow::__private::kind::TraitKind;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::TrySendError;
+// use tokio::sync::mpsc::error::TrySendError;
+use arrow::array::RecordBatch as ArrowRecordBatch;
 
 mod source;
-use crate::source::{Source, CSVSource, DataSource};
+use crate::source::{Source, csv::CSVSource, DataSource};
 
 
 #[pymodule]
@@ -23,19 +24,16 @@ fn python_rust_lib_gs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 #[pyclass]
 struct FederatedStreamer {
-  receiver: Arc<tokio::sync::Mutex<mpsc::Receiver<Vec<String>>>>,
-  batch_size: usize,
+  receiver: Arc<tokio::sync::Mutex<mpsc::Receiver<ArrowRecordBatch>>>,
+  batch_size: Option<usize>,
 }
 
 #[pymethods]
 impl FederatedStreamer {
-  pub fn salut(&self) -> String {
-    format!("salut with {} as batch size", self.batch_size)
-  }
   #[new]
-  #[pyo3(signature = (batch_size, sources, buffer_size=100))]
-  pub fn new(batch_size: usize, sources: Vec<DataSource>, buffer_size: usize) -> PyResult<Self> {
-    let (tx, rx) = mpsc::channel(buffer_size);
+  #[pyo3(signature = (batch_size, sources, buffer_size=64))]
+  pub fn new(batch_size: Option<usize>, sources: Vec<DataSource>, buffer_size: Option<usize>) -> PyResult<Self> {
+    let (tx, rx) = mpsc::channel(buffer_size.unwrap_or(64));
 
     // get_runtime uses get_or_init (Love it!)
     get_runtime().spawn(async move {
@@ -60,7 +58,7 @@ impl FederatedStreamer {
           eprintln!("Data is being sent through a full buffered channel. This is a bug!");
           std::process::exit(1);
         }
-        
+
         // // if tx.try_send(lines).is_err() {  // That means the channel is closed because FederatedStreamer has been
         // //   // destroyed by python's garbage collector
         // //   // Alternative: cancellationtoken, but the current impl is non-blocking
@@ -100,11 +98,11 @@ impl FederatedStreamer {
   }
 }
 
-fn handle_batch<'a>(source: DataSource, batch_size: usize) -> BoxStream<'a, anyhow::Result<Vec<String>>> {
+fn handle_batch<'a>(source: DataSource, batch_size: Option<usize>) -> BoxStream<'a, anyhow::Result<ArrowRecordBatch>> {
   // https://docs.rs/futures/latest/futures/stream/fn.unfold.html
   // Unfold accepts a T and a FnMut(T) -> Future and returns a Future with an output of Option<Item, T>
   futures::stream::unfold(source, move |source| async move {
-    let batch = source.fetch(Some(batch_size)).await;
+    let batch = source.fetch(batch_size).await;
     match batch {
       Ok(Some(data)) => Some((Ok(data), source)),
       Ok(None) => None, // Stream finished

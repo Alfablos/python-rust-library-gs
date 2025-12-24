@@ -37,3 +37,4 @@ polars = { version = "0.46", default-features = true, features = [
     "lazy",
     "timezones", # Needed due to a bug in 0.52 (https://github.com/pola-rs/polars/issues/25231)
 ] }
+arrow = { version = "57", default-features = false, features = [] }
