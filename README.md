@@ -2,6 +2,11 @@
 
 This *minimal* project illustrates how Rust can be used to write libraries that are then exposed to a Python runtime and imported.
 
+The repo is made up of 2 branches:
+* [**master**](https://github.com/Alfablos/python-rust-library-gs/tree/master): the simplest example of how to create a minimal rust library for python
+
+* [**stream-from-file**](https://github.com/Alfablos/python-rust-library-gs/tree/stream-from-file): a more complex example that shows how to asynchronously and lazily read a CSV file using `polars` and stream results to the python runtime that awaits. The `Source` trait is an abstraction, so other sources can be supported.
+
 
 ## Build
 
