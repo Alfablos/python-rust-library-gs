@@ -15,10 +15,12 @@ struct FederatedStreamer {
 #[pymethods]
 impl FederatedStreamer {
   #[new]
-  pub fn new() -> Self {
-    Self {
-      message: "Hey you!".into(),
-    }
+  #[pyo3(signature = (message = "Hey you!"))]
+  pub fn new(message: Option<&str>) -> Self {
+    let message = message
+    .and_then(|m| Some(m.to_string()))
+    .unwrap_or("Hey you!".to_string());
+    Self { message }
   }
 
   #[getter]
