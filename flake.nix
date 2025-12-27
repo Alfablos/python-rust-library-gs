@@ -46,7 +46,10 @@
           name = "use-python-rust-lib-gs";
           propagatedBuildInputs = [
             ((pythonForPkgs pkgs).withPackages (
-              pyPkgs: with pyPkgs; [ self.packages.${pkgs.stdenv.hostPlatform.system}.python-rust-lib-gs ]
+              pyPkgs: with pyPkgs; [
+                self.packages.${pkgs.stdenv.hostPlatform.system}.python-rust-lib-gs
+                pkgs.python3Packages.pyarrow
+              ]
             ))
           ];
           dontUnpack = true;
@@ -63,7 +66,16 @@
           python.pkgs.buildPythonPackage {
             pname = "python-rust-lib-gs";
             inherit version;
-            src = ./.;
+            src = lib.cleanSourceWith {
+              src = ./.;
+              filter =
+                name: type:
+                let
+                  baseName = builtins.baseNameOf name;
+                  isInSrc = (builtins.match ".*/src($|/.*)" (toString name)) != null;
+                in
+                (isInSrc || baseName == "Cargo.toml" || baseName == "Cargo.lock" || baseName == "pyproject.toml");
+            };
 
             cargoDeps = importCargoLock {
               lockFile = ./Cargo.lock;
