@@ -38,23 +38,23 @@ impl FederatedStreamer {
       // Create a stream for each source:
       let streams = sources
         .into_iter()
-        .map(|source| handle_batch(source));
+        .map(handle_batch);
 
       // Combine streams
       let mut united_stream = futures::stream::select_all(streams);
 
       // Push to channel
       while let Some(result) = united_stream.next().await {
-        let lines = match result {
-          Ok(lines) => lines,
+        let data = match result {
+          Ok(d) => d,
           Err(e) => {
             eprintln!("Unable to fetch more data: {e}");
-            std::process::exit(1);
+            std::process::exit(1);    // TODO: figure out what to do if a single source fails
           }
         };
 
         // If sending through a closed channel it means the work is done: python runtime has been destroyed
-        if tx.send(lines).await.is_err() { // Can only fail due to a send op through a closed channel, which means the job is done
+        if tx.send(data).await.is_err() { // Can only fail due to a send op through a closed channel, which means the job is done
           break;
         }
       }
