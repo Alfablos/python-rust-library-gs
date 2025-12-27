@@ -21,3 +21,17 @@ async def async_iter():
         print('\nStream interrupted.')
 
 ```
+
+A batch source is defined depending on its type, CSV files sources can be initializzed like this:
+```python
+streamer = FederatedStreamer(
+    [
+        CSVSource('./mimic-patients.csv', ['gender', 'anchor_age', 'dod'], batch_size=5)
+    ]
+)
+```
+
+Data, in this case, is read using polars specifying which columns should be *lazily* read. It is then turned into an Arrow RecordBatch and returned to the python runtime with a zero-copy mechanism.
+
+Assuming more than one CSV source is defined, the rust library will poll all the configured reader (via `futures::stream::select_all(streams)`), returning the first available batch. This should **prevent slow
+sources from slowing down faster ones**.
