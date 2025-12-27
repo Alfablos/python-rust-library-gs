@@ -8,7 +8,6 @@ import pyarrow
 
 
 streamer = FederatedStreamer(
-    64,
     [
         CSVSource('./mimic-patients.csv', ['gender', 'anchor_age', 'dod'], batch_size=5)
     ]
@@ -24,7 +23,3 @@ async def async_iter():
 
 
 run(async_iter())
-
-
-
-print('Great! Now the rust library dies!')

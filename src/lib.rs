@@ -1,16 +1,18 @@
-use std::error::Error;
+use anyhow::__private::kind::TraitKind;
 use futures::stream::{BoxStream, StreamExt};
 use pyo3::types::PyAny;
-use pyo3::{Bound, PyResult, Python, pyclass, pymethods, pymodule, types::{PyModule, PyModuleMethods}, Py};
+use pyo3::{
+  Bound, Py, PyResult, Python, pyclass, pymethods, pymodule,
+  types::{PyModule, PyModuleMethods},
+};
+use std::error::Error;
 use std::sync::{Arc, OnceLock};
-use anyhow::__private::kind::TraitKind;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 // use tokio::sync::mpsc::error::TrySendError;
 
 mod source;
-use crate::source::{Source, csv::CSVSource, DataSource};
-
+use crate::source::{DataSource, Source, csv::CSVSource};
 
 #[pymodule]
 fn python_rust_lib_gs(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -20,24 +22,23 @@ fn python_rust_lib_gs(m: &Bound<'_, PyModule>) -> PyResult<()> {
   Ok(())
 }
 
-
 #[pyclass]
 struct FederatedStreamer {
   receiver: Arc<tokio::sync::Mutex<mpsc::Receiver<Py<PyAny>>>>,
-  batch_size: Option<usize>,
 }
 
 #[pymethods]
 impl FederatedStreamer {
   #[new]
-  #[pyo3(signature = (batch_size, sources, buffer_size=64))]
-  pub fn new(batch_size: Option<usize>, sources: Vec<DataSource>, buffer_size: Option<usize>) -> PyResult<Self> {
-    let (tx, rx) = mpsc::channel(buffer_size.unwrap_or(64));
+  pub fn new(sources: Vec<DataSource>) -> PyResult<Self> {
+    let (tx, rx) = mpsc::channel(2 * sources.len());
 
     // get_runtime uses get_or_init (Love it!)
     get_runtime().spawn(async move {
       // Create a stream for each source:
-      let streams = sources.into_iter().map(|source| handle_batch(source, batch_size));
+      let streams = sources
+        .into_iter()
+        .map(|source| handle_batch(source));
 
       // Combine streams
       let mut united_stream = futures::stream::select_all(streams);
@@ -52,32 +53,15 @@ impl FederatedStreamer {
           }
         };
 
-        // The try_send approach won't work since, at first, the producer will overflow the channel. Let's go for a more natural backpressure
-        if tx.send(lines).await.is_err() { // Can only fail due to a send op through a closed channel
-          eprintln!("Data is being sent through a full buffered channel. This is a bug!");
-          std::process::exit(1);
+        // If sending through a closed channel it means the work is done: python runtime has been destroyed
+        if tx.send(lines).await.is_err() { // Can only fail due to a send op through a closed channel, which means the job is done
+          break;
         }
-
-        // // if tx.try_send(lines).is_err() {  // That means the channel is closed because FederatedStreamer has been
-        // //   // destroyed by python's garbage collector
-        // //   // Alternative: cancellationtoken, but the current impl is non-blocking
-        // //   break;
-        // // }
-        // match tx.try_send(lines) {
-        //   Ok(_) => {}
-        //   Err(TrySendError::Full(_)) => panic!("Data is being sent through a full buffered channel. This is a bug!"),
-        //   Err(TrySendError::Closed(_)) => {
-        //     /*
-        //       That's ok, Python garbage-collected the FederatedStreamer instance. R.I.P.
-        //     */
-        //   }
-        // }
       }
     });
 
     Ok(Self {
       receiver: Arc::new(tokio::sync::Mutex::new(rx)),
-      batch_size,
     })
   }
 
@@ -97,17 +81,20 @@ impl FederatedStreamer {
   }
 }
 
-fn handle_batch<'a>(source: DataSource, batch_size: Option<usize>) -> BoxStream<'a, PyResult<Py<PyAny>>> {
+fn handle_batch<'a>(
+  source: DataSource
+) -> BoxStream<'a, PyResult<Py<PyAny>>> {
   // https://docs.rs/futures/latest/futures/stream/fn.unfold.html
   // Unfold accepts a T and a FnMut(T) -> Future and returns a Future with an output of Option<Item, T>
   futures::stream::unfold(source, move |source| async move {
-    let batch = source.fetch(batch_size).await;
+    let batch = source.fetch(source.batch_size()).await;
     match batch {
       Ok(Some(data)) => Some((Ok(data), source)),
       Ok(None) => None, // Stream finished
       Err(e) => Some((Err(e), source)),
     }
-  }).boxed()  // Not a big deal performance-wise since we're running IO-bound tasks
+  })
+  .boxed() // Not a big deal performance-wise since we're running IO-bound tasks
 }
 
 fn get_runtime() -> &'static Runtime {
