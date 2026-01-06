@@ -25,12 +25,14 @@ pub struct CSVSource {
 impl CSVSource {
   #[new]
   #[pyo3(signature = (path, fields, batch_size=64))]
-  pub fn new(path: &str, fields: Vec<String>, batch_size: Option<usize>) -> PyResult<Self> {
+  pub fn new(path: &str, fields: Vec<(String, Option<String>)>, batch_size: Option<usize>) -> PyResult<Self> {
     let data = LazyCsvReader::new(PlPath::new(path))
       .with_has_header(true)
       .finish()
       .map_err(|e| PyOSError::new_err(format!("Unable to read from path {path}: {}", e)))?;
-    let data = data.select(fields.into_iter().map(|f| col(f)).collect::<Vec<Expr>>());
+    let data = data.select(fields.into_iter().map(|(actual, alias)| {
+      col(actual.clone()).alias(alias.unwrap_or(actual))
+    }).collect::<Vec<Expr>>());
     Ok(Self {
       data,
       path: String::from(path),

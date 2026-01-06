@@ -49,7 +49,7 @@ impl FederatedStreamer {
           Ok(d) => d,
           Err(e) => {
             eprintln!("Unable to fetch more data: {e}");
-            std::process::exit(1);    // TODO: figure out what to do if a single source fails
+            std::process::exit(1);    // TODO: figure out what to do if a single source fails: cancellation token?
           }
         };
 

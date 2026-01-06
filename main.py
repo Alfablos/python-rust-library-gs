@@ -9,14 +9,14 @@ import pyarrow
 
 streamer = FederatedStreamer(
     [
-        CSVSource('./mimic-patients.csv', ['gender', 'anchor_age', 'dod'], batch_size=5)
+        CSVSource('./mimic-patients.csv', [('gender', 'g'), ('anchor_age', None), ('dod', 'date_of_death')], batch_size=5)
     ]
 )
 
 async def async_iter():
     try:
         async for batch in streamer:
-            print(batch.columns)
+            print(batch)
             await sleep(1.)
     except CancelledError:
         print('\nStream interrupted.')
