@@ -1,0 +1,71 @@
+name: python-rust-library
+
+networks:
+  postgres:
+
+
+configs:
+  pgadmin-pgpass:
+    content: |
+      postgres:5432:*:postgres:mypass
+  pgadmin-servers:
+    content: |
+      {
+        "Servers": {
+          "1": {
+            "Name": "the_postgres",
+            "Group": "Servers",
+            "Host": "postgres",
+            "Port": 5432,
+            "MaintenanceDB": "postgres",
+            "Username": "postgres",
+            "PassFile": "/config/pgpass"
+          }
+        }
+      }
+
+
+services:
+  postgres:
+    container_name: postgres
+    image: docker.io/postgres:18-bookworm
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mypass
+      PGDATA: /var/lib/postgresql/data/pgdata
+    networks:
+      postgres:
+        aliases:
+          - postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql
+      - ./mimic-patients-B.csv:/data/mimic-patients-B.csv
+
+  pgadmin:
+    image: dpage/pgadmin4:9.11
+    ports:
+      - "5050:80"
+    environment:
+      # Required by pgAdmin
+      PGADMIN_DEFAULT_EMAIL: demo@example.com
+      PGADMIN_DEFAULT_PASSWORD: secret
+
+      # Don't require the user to login
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+
+      # Don't require a "master" password after logging in
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    configs:
+      - source: pgadmin-pgpass
+        target: /config/pgpass
+        uid: "5050"
+        gid: "5050"
+        mode: 0400
+      - source: pgadmin-servers
+        target: /pgadmin4/servers.json
+        mode: 0444
+    networks:
+      postgres:
