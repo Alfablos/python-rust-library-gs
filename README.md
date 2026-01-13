@@ -2,6 +2,8 @@
 
 This *minimal* project illustrates how Rust can be used to write libraries that are then exposed to a Python runtime and imported.
 
+**Note**: the `mimic-patients.csv` file used in this example is taken from the demo MIMIC-IV dataset freely available online.
+
 
 ## Build & Usage
 
