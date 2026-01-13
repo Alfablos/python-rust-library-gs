@@ -75,12 +75,16 @@ devShell example:
 ```
 
 
-test with:
+And then:
 
 ```shell
-nix develop
+nix develop                                       # opens a new shell
+
+python -m venv .venv && source .venv/bin/activate
+
+maturin develop
 
 # in the new shell...
 python -c 'import python_rust_lib_gs as rpl; print(rpl.FederatedStreamer().message)'
 ```
-"Hey you!" should appear.
+The "Hey you!" dummy hardcoded message should appear.
